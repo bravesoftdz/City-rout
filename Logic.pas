@@ -311,6 +311,7 @@ begin
   trace := StationEnableOnTransport(start, stop, transportType);
   if (trace <> nil) and (transportType <> 0) then
   begin
+    Result := true;
     {repeat
       pnt := trace^.data;
       distance := GetDistance(trace^.data^.X, trace^.data^.Y, trace^.next^.data^.X, trace^.next^.data^.Y);
