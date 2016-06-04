@@ -36,6 +36,7 @@ procedure CheckTransport(var start, checkPoint : PTStationList; timer : double);
 procedure SaveTrace(time : double);
 procedure CopyStackToTraceTable(var head : PTTrace);
 procedure TraceClear(var stack : PTTrace);
+function GetOverallTime(start, stop : PTStationList; transportType : byte) : double;
 function CheckTime(var start, checkPoint : PTStationList; var timer : double; specif : byte) : boolean;
 function FinalPointInTrace(var start : PTStationList; var timer : double) : boolean;
 function GetAnswer(start : boolean) : PTStationList;
@@ -222,48 +223,6 @@ begin
   Result := pnt <> nil;
 end;
 
-{
-procedure Dijkstra(var prev, last : PTStationList; distance : double; count : integer);
-var
-  i, num : integer;
-  pnt : PTStationList;
-begin
-  if (prev <> last) and (count * 2 <= maxCount)   then
-  begin
-    num := High(connectMatrix);
-    for i := 0 to num + 1 do
-    begin
-      pnt := GetStationPnt(i + 1);
-      if (pnt <> prev) and not PointInList(prev, pnt) and
-      (connectMatrix[prev^.num - 1, i].weight <> MIN_DISTANCE) and
-      (distance + connectMatrix[prev^.num - 1, i].weight <
-      connectMatrix[prev^.num - 1, i].distance) then
-      begin
-        connectMatrix[prev^.num - 1, i].distance :=
-        distance + connectMatrix[prev^.num - 1, i].weight;
-        pnt.prev := prev;
-        //writeln(prev^.name);
-        //Readln;
-        Dijkstra(pnt, last, connectMatrix[prev^.num - 1, i].distance, count + 1);
-      end;
-    end
-  end
-  else if (count * 2 <= maxCount) then
-  begin
-    if distance + connectMatrix[prev^.num - 1, last^.num - 1].weight <
-    connectMatrix[prev^.num - 1, last^.num - 1].distance then
-    begin
-      connectMatrix[prev^.num - 1, last^.num - 1].distance :=
-      distance + connectMatrix[prev^.num - 1, last^.num - 1].weight;
-      writeln('Конец найден ', connectMatrix[prev^.num - 1, last^.num - 1].distance : 0 : 3);
-      Writeln(#13,#10);
-      PrintList(last);
-      maxCount := count;
-    end;
-  end;
-end;       }
-
-
 procedure PrintList1;
 var
   pnt : PTStationList;
@@ -274,7 +233,6 @@ begin
     writeln(pnt^.name);
     pnt := pnt^.prev;
   end;
-
 end;
 
 procedure FindFuckingRoute(var start : PTStationList; timer : double);
@@ -312,36 +270,27 @@ begin
   if (trace <> nil) and (transportType <> 0) then
   begin
     Result := true;
-    {repeat
-      pnt := trace^.data;
-      distance := GetDistance(trace^.data^.X, trace^.data^.Y, trace^.next^.data^.X, trace^.next^.data^.Y);
-      case transportType of
-        1, 2 :
-          connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time := distance / BUS_SPEED;
-        3 :
-          connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time := distance / TRAM_SPEED;
-        4 :
-          connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time := distance / METRO_SPEED;
-      end;
-      trace := trace^.next;
-      trace^.data^.prev := pnt;
-    until trace^.data = stop; }
-
     while true do
     begin
-      distance := GetDistance(trace^.data^.X, trace^.data^.Y, trace^.next^.data^.X, trace^.next^.data^.Y);
-      case transportType of
-        1, 2 :
-          connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time := distance / BUS_SPEED;
-        3 :
-          connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time := distance / TRAM_SPEED;
-        4 :
-          connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time := distance / METRO_SPEED;
-      end;
+      connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time := GetOverallTime(trace^.data, trace^.next^.data, transportType);
       trace^.next^.data^.prev := trace^.data;
       if trace^.next^.data <> stop then trace := trace^.next else break;
     end;
     FindFuckingRoute(stop, timer + connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time);
+  end;
+end;
+
+function GetOverallTime(start, stop : PTStationList; transportType : byte) : double;
+begin
+  case transportType of
+    1, 2 :
+      Result := GetDistance(start^.X, start^.Y, stop^.X, stop^.Y) / BUS_SPEED;
+    3 :
+      Result := GetDistance(start^.X, start^.Y, stop^.X, stop^.Y) / TRAM_SPEED;
+    4 :
+      Result := GetDistance(start^.X, start^.Y, stop^.X, stop^.Y) / METRO_SPEED;
+    0 :
+      Result := GetDistance(start^.X, start^.Y, stop^.X, stop^.Y) / ON_FOOT_SPEED;
   end;
 end;
 
@@ -495,16 +444,7 @@ function CheckTime(var start, checkPoint : PTStationList; var timer : double; sp
 var
   time : double;
 begin
-  case specif of
-    1, 2 :
-      time := GetDistance(start^.X, start^.Y, checkPoint^.X, checkPoint^.Y) / BUS_SPEED;
-    3 :
-      time := GetDistance(start^.X, start^.Y, checkPoint^.X, checkPoint^.Y) / TRAM_SPEED;
-    4 :
-      time := GetDistance(start^.X, start^.Y, checkPoint^.X, checkPoint^.Y) / METRO_SPEED;
-    0 :
-      time := GetDistance(start^.X, start^.Y, checkPoint^.X, checkPoint^.Y) / ON_FOOT_SPEED;
-  end;
+  time := GetOverallTime(start, checkPoint, specif);
   if connectMatrix[start^.num - 1, checkPoint^.num - 1].time >= timer + time then
   begin
     connectMatrix[start^.num - 1, checkPoint^.num - 1].time := timer + time;
@@ -518,6 +458,19 @@ function StationsTired(i, j : integer) : boolean;
 begin
   Result := connectMatrix[i, j].distance <> 0;
 end;
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 procedure SaveTrace(time : double);
 var
@@ -609,24 +562,5 @@ begin
     stack := nil;
   end;
 end;
-
-
-
-
-
-
-
-
-
-
-
-
-{procedure FindRoute;
-begin
-  start := GetAnswer(true);
-  stop := GetAnswer(false);
-  maxCount := StationListGetSize * 2;
-  Dijkstra(start, last, 0, 0);
-end;  }
 
 end.
