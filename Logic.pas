@@ -53,7 +53,6 @@ const
   ON_FOOT_SPEED = 5.288 * 1000 / 60;
   MAX_TIME = $FFFF;
 
-
 function GetDistance(latitude1, longitude1, latitude2, longitude2 : double) : double;
 const diameter = 12756200 ;
 var   dx, dy, dz:double;
@@ -85,13 +84,9 @@ begin
 end;
 
 function ConnectiveMatrixPointsTired(pnt1, pnt2 : PTStationList) : boolean;
-var
-  i, j, num : integer;
 begin
   if pnt1 <> pnt2 then
   begin
-    Result := false;
-    num := StationListGetSize - 1;
     Result := (connectMatrix[pnt1^.num - 1, pnt2^.num - 1].bus <> nil) or
     (connectMatrix[pnt1^.num - 1, pnt2^.num - 1].trolBus <> nil) or
     (connectMatrix[pnt1^.num - 1, pnt2^.num - 1].tram <> nil) or
@@ -143,14 +138,12 @@ end;
 procedure ConnectiveMatrixFillLinks;
 var
   pnt1, pnt2 : PTStationList;
-  i, j, k, num : integer;
 begin
   pnt1 := stationList^.next;
-  pnt2 := stationList^.next;
 
   while pnt1 <> nil do
   begin
-    pnt2 := stationList^.next;
+    pnt2 := pnt1^.next;
     while pnt2 <> nil do
     begin
       if (pnt1 <> pnt2) and ConnectiveMatrixPointsTired(pnt1, pnt2) then
@@ -204,7 +197,6 @@ end;
 function GetAnswer(start : boolean) : PTStationList;
 var
   num : integer;
-  pnt : PTStationList;
 begin
   if start then write (#13, #10'¬ведите номер исходной точки: ')
   else write (#13, #10'¬ведите номер пункта назначени€: ');
@@ -301,7 +293,6 @@ begin
         CheckTransport(start, pnt, timer);
     end;
   end else
-
   if (timer < maxTime * 1.5) then
   begin //SaveTrace(timer);
     writeln;
@@ -315,13 +306,11 @@ var
   trace : PTTrace;
   distance : double;
   transportType : byte;
-  pnt : PTStationList;
 begin
   Result := false;
   trace := StationEnableOnTransport(start, stop, transportType);
   if (trace <> nil) and (transportType <> 0) then
   begin
-    distance := 0;
     {repeat
       pnt := trace^.data;
       distance := GetDistance(trace^.data^.X, trace^.data^.Y, trace^.next^.data^.X, trace^.next^.data^.Y);
@@ -339,6 +328,7 @@ begin
 
     while true do
     begin
+      distance := GetDistance(trace^.data^.X, trace^.data^.Y, trace^.next^.data^.X, trace^.next^.data^.Y);
       case transportType of
         1, 2 :
           connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time := distance / BUS_SPEED;
@@ -347,7 +337,7 @@ begin
         4 :
           connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time := distance / METRO_SPEED;
       end;
-      trace^.next^.data^.prev := trace^.data^.prev;
+      trace^.next^.data^.prev := trace^.data;
       if trace^.next^.data <> stop then trace := trace^.next else break;
     end;
     FindFuckingRoute(stop, timer + connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time);
@@ -363,6 +353,7 @@ end;
 function StationBetween(start, fin : PTTrace; stat : PTStationList) : boolean;
 begin
   Result := False;
+  if start^.enable and not start^.next^.enable then start := start^.next;
   while (start <> nil) and (start^.enable = fin^.enable) and not Result do
   begin
     Result := stat = start^.data;
@@ -374,15 +365,16 @@ function GetFinStation(station : PTTrace) : PTTrace;
 var
   pnt : PTTrace;
 begin
+  if station^.enable and not station^.next^.enable then station := station^.next;
   pnt := station;
-  while pnt^.next^.enable = station^.enable do pnt := pnt^.next;
+  while (pnt^.next <> nil) and (station^.enable = pnt^.next^.enable) do pnt := pnt^.next;
   Result := pnt;
 end;
 
 function StationEnableOnBus(stat1, stat2 : PTStationList) : PTTrace;
 var
   head : PTTraffic;
-  pnt, finStation, startStation : PTTrace;
+  finStation, startStation : PTTrace;
 begin
   Result := nil;
   if stat1^.bus <> nil then
@@ -453,7 +445,6 @@ end;
 
 function StationEnableOnTransport(pnt1, pnt2 : PTStationList; out transportType : byte) : PTTrace;
 begin
-  Result := nil;
   transportType := 0;
   Result := StationEnableOnBus(pnt1, pnt2);
   if Result <> nil then
@@ -513,7 +504,7 @@ begin
     0 :
       time := GetDistance(start^.X, start^.Y, checkPoint^.X, checkPoint^.Y) / ON_FOOT_SPEED;
   end;
-  if connectMatrix[start^.num - 1, checkPoint^.num - 1].time > timer + time then
+  if connectMatrix[start^.num - 1, checkPoint^.num - 1].time >= timer + time then
   begin
     connectMatrix[start^.num - 1, checkPoint^.num - 1].time := timer + time;
     checkPoint^.prev := start;

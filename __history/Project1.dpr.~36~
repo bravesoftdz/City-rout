@@ -6,10 +6,8 @@ program Project1;
 
 uses
   System.SysUtils, Logic, FileUnit;
-
-var
-  i, j, num : integer;
-  pnt : PTTransportList;
+  var
+    i :  integer;
 
 procedure PrintStations;
 var
@@ -26,14 +24,31 @@ end;
 begin
   useBus := true;
   useTrol := true;
-  useTram := false;
-  useMetro := false;
+  useTram := true;
+  useMetro := true;
   CreateStationList;
   CreateTransportList;
   ConnectiveMatrixCreate;
-  //PrintStations;
+
+
+
+  PrintStations;
   //FindRoute;
-  //writeln ('Завершено!');
+  //start := GetAnswer(true);
+  //stop := GetAnswer(false);
+  //maxTime := MAX_TIME;
+  //FindFuckingRoute(start, 0);
+  for i := 1 to 100 do stationList := stationList^.next;
+    if stationList^.metro <> nil then writeln ('есть') else writeln ('пусто');
+  writeln ('Завершено!');
+
+ { while traceTable^.data <> nil do
+  begin
+    Writeln(traceTable^.data^.data^.name);
+    traceTable^.data := traceTable^.data^.next;
+  end;       }
+
+
  { num := StationListGetSize - 1;
   for i := 0 to num do
     for j := 0 to num do
@@ -52,7 +67,7 @@ begin
     writeln;
   end;}
 
-  stationList := stationList^.next;
+  {stationList := stationList^.next;
   while stationList <> nil do
   begin
     Write(stationList^.num, ' ');
@@ -61,8 +76,23 @@ begin
       write(' ',stationlist^.bus^.data^.specif, stationlist^.bus^.data^.num);
       stationList^.bus := stationList^.bus^.next;
     end;
+    while stationList^.trolbus <> nil do
+    begin
+      write(' ',stationlist^.trolbus^.data^.specif, stationlist^.trolbus^.data^.num);
+      stationList^.trolbus := stationList^.trolbus^.next;
+    end;
+    while stationList^.tram <> nil do
+    begin
+      write(' ',stationlist^.tram^.data^.specif, stationlist^.tram^.data^.num);
+      stationList^.tram := stationList^.tram^.next;
+    end;
+    while stationList^.metro <> nil do
+    begin
+      write(' ',stationlist^.metro^.data^.specif, stationlist^.metro^.data^.num);
+      stationList^.metro := stationList^.metro^.next;
+    end;
     stationList := stationList^.next;
     writeln;
-  end;
+  end; }
   Readln;
 end.

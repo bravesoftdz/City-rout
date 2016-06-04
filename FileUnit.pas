@@ -205,6 +205,7 @@ begin
     inc(i);
   end;
   i := i + 2;
+
   elem := head;
   while elem.data.num <> mas[i] do
   begin
@@ -250,7 +251,7 @@ var
 begin
   num := GetType(elem^.specif);
   pnt := elem^.trace;
-  while pnt^.next.enable do
+  while pnt <> nil do
   begin
     case num of
       1 : AddTransport(pnt^.data^.bus, elem);

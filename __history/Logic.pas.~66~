@@ -5,9 +5,6 @@ interface
 uses
   System.SysUtils, FileUnit, Math;
 
-const
-  MAX_DISTANCE = $FFFF;
-
 type
   TLinks = record
     bus : PTTraffic;
@@ -30,15 +27,16 @@ var
   connectMatrix : array of array of TLinks;
   start, stop : PTStationList;
   traceTable : PTTraceTable;
+  maxTime : double;
 
 procedure ConnectiveMatrixCreate;
 //procedure FindRoute;
 procedure FindFuckingRoute(var start : PTStationList; timer : double);
 procedure CheckTransport(var start, checkPoint : PTStationList; timer : double);
-procedure CheckTime(var start, checkPoint : PTStationList; var timer : double; specif : byte);
 procedure SaveTrace(time : double);
-procedure CopyStackToTraceTable(var head, stack : PTTrace);
+procedure CopyStackToTraceTable(var head : PTTrace);
 procedure TraceClear(var stack : PTTrace);
+function CheckTime(var start, checkPoint : PTStationList; var timer : double; specif : byte) : boolean;
 function FinalPointInTrace(var start : PTStationList; var timer : double) : boolean;
 function GetAnswer(start : boolean) : PTStationList;
 function GetDistance(latitude1, longitude1, latitude2, longitude2 : double) : double;
@@ -53,9 +51,8 @@ const
   TRAM_SPEED = BUS_SPEED * 0.9;
   METRO_SPEED = 41 * 1000 / 60;
   ON_FOOT_SPEED = 5.288 * 1000 / 60;
+  MAX_TIME = $FFFF;
 
-var
-  maxTime : double;
 
 function GetDistance(latitude1, longitude1, latitude2, longitude2 : double) : double;
 const diameter = 12756200 ;
@@ -158,10 +155,10 @@ begin
     begin
       if (pnt1 <> pnt2) and ConnectiveMatrixPointsTired(pnt1, pnt2) then
       begin
-        connectMatrix[pnt1^.num - 1, pnt2^.num - 1].time :=
+        connectMatrix[pnt1^.num - 1, pnt2^.num - 1].distance :=
         GetDistance(pnt1^.X, pnt1^.Y, pnt2^.X, pnt2^.Y);
-        connectMatrix[pnt2^.num - 1, pnt1^.num - 1].time :=
-        connectMatrix[pnt1^.num - 1, pnt2^.num - 1].time;
+        connectMatrix[pnt2^.num - 1, pnt1^.num - 1].distance :=
+        connectMatrix[pnt1^.num - 1, pnt2^.num - 1].distance;
       end;
       pnt2 := pnt2^.next;
     end;
@@ -184,8 +181,8 @@ begin
       connectMatrix[i,j].trolBus := nil;
       connectMatrix[i,j].tram := nil;
       connectMatrix[i,j].metro := nil;
-      connectMatrix[i,j].time := MIN_DISTANCE;
-      connectMatrix[i,j].distance := MAX_DISTANCE;
+      connectMatrix[i,j].time := MAX_TIME;
+      connectMatrix[i,j].distance := 0;
     end;
   end;
 
@@ -275,7 +272,18 @@ begin
 end;       }
 
 
+procedure PrintList1;
+var
+  pnt : PTStationList;
+begin
+  pnt := stop;
+  while pnt <> nil do
+  begin
+    writeln(pnt^.name);
+    pnt := pnt^.prev;
+  end;
 
+end;
 
 procedure FindFuckingRoute(var start : PTStationList; timer : double);
 var
@@ -287,13 +295,18 @@ begin
     if FinalPointInTrace(start, timer) then exit;
     num := StationListGetSize - 1;
     for i := 0 to num do
-      if StationsTired(start^.num - 1, i) then
-      begin
-        pnt := GetStationPnt(i + 1);
+    begin
+      pnt := GetStationPnt(i + 1);
+      if (StationsTired(start^.num - 1, i)) and not PointInList(start, pnt) then
         CheckTransport(start, pnt, timer);
-      end;
+    end;
   end else
-  if (timer < maxTime * 1.5) then SaveTrace(timer);
+  if (timer < maxTime * 1.5) then
+  begin //SaveTrace(timer);
+    writeln;
+    PrintList1;
+    maxTime := timer;
+  end;
 end;
 
 function FinalPointInTrace(var start : PTStationList; var timer : double) : boolean;
@@ -301,27 +314,44 @@ var
   trace : PTTrace;
   distance : double;
   transportType : byte;
+  pnt : PTStationList;
 begin
+  Result := false;
   trace := StationEnableOnTransport(start, stop, transportType);
-  if trace <> nil then
+  if (trace <> nil) and (transportType <> 0) then
   begin
     distance := 0;
-    while trace^.next^.data <> stop do
+    {repeat
+      pnt := trace^.data;
+      distance := GetDistance(trace^.data^.X, trace^.data^.Y, trace^.next^.data^.X, trace^.next^.data^.Y);
+      case transportType of
+        1, 2 :
+          connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time := distance / BUS_SPEED;
+        3 :
+          connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time := distance / TRAM_SPEED;
+        4 :
+          connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time := distance / METRO_SPEED;
+      end;
+      trace := trace^.next;
+      trace^.data^.prev := pnt;
+    until trace^.data = stop; }
+
+    while true do
     begin
       distance := GetDistance(trace^.data^.X, trace^.data^.Y, trace^.next^.data^.X, trace^.next^.data^.Y);
-      trace := trace^.next;
+      case transportType of
+        1, 2 :
+          connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time := distance / BUS_SPEED;
+        3 :
+          connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time := distance / TRAM_SPEED;
+        4 :
+          connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time := distance / METRO_SPEED;
+      end;
+      trace^.next^.data^.prev := trace^.data;
+      if trace^.next^.data <> stop then trace := trace^.next else break;
+      //break;
     end;
-    case transportType of
-      1, 2 :
-        timer := timer + distance / BUS_SPEED;
-      3 :
-        timer := timer + distance / TRAM_SPEED;
-      4 :
-        timer := timer + distance / METRO_SPEED;
-      0 :
-        timer := timer + distance / ON_FOOT_SPEED;
-    end;
-    FindFuckingRoute(stop, timer)
+    FindFuckingRoute(stop, timer + connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time);
   end;
 end;
 
@@ -331,27 +361,23 @@ begin
   Result := trace;
 end;
 
-function GetFinStation(station : PTTrace) : PTTrace;
-var
-  pnt, finStation : PTTrace;
-begin
-  pnt := station;
-  while pnt^.enable do pnt := pnt^.next;
-  if pnt = station then finStation := pnt^.next
-  else finStation := pnt^.next;
-  pnt := station;
-  while pnt^.next^.enable and (pnt <> finStation) do pnt := pnt^.next;
-  Result := pnt;
-end;
-
 function StationBetween(start, fin : PTTrace; stat : PTStationList) : boolean;
 begin
   Result := False;
-  while (start <> fin) and not Result do
+  while (start <> nil) and (start^.enable = fin^.enable) and not Result do
   begin
-    Result := start^.data = stat;
+    Result := stat = start^.data;
     start := start^.next;
   end;
+end;
+
+function GetFinStation(station : PTTrace) : PTTrace;
+var
+  pnt : PTTrace;
+begin
+  pnt := station;
+  while pnt^.next^.enable = station^.enable do pnt := pnt^.next;
+  Result := pnt;
 end;
 
 function StationEnableOnBus(stat1, stat2 : PTStationList) : PTTrace;
@@ -366,25 +392,22 @@ begin
     while head <> nil do
     begin
       startStation := GetStartStation(head^.data^.trace, stat1);
-      if startStation^.next^.data = stat2 then
-      begin
-        Result := startStation;
-        exit;
-      end;
+      finStation := GetFinStation(startStation);
+      if StationBetween(startStation, finStation, stat2) then Result := startStation;
+      if Result <> nil then exit;
       head := head^.next;
     end;
-  end else if stat1.trolBus <> nil then
+  end;
+  if (Result = nil) and (stat1^.trolBus <> nil) then
   begin
     head := stat1^.trolBus;
     while head <> nil do
     begin
       startStation := GetStartStation(head^.data^.trace, stat1);
-      if startStation^.next^.data = stat2 then
-      begin
-        Result := startStation;
-        exit;
-      end
-      else head := head^.next;
+      finStation := GetFinStation(startStation);
+      if StationBetween(startStation, finStation, stat2) then Result := startStation;
+      if Result <> nil then exit;
+      head := head^.next;
     end;
   end;
 end;
@@ -451,16 +474,33 @@ end;
 procedure CheckTransport(var start, checkPoint : PTStationList; timer : double);
 begin
   if connectMatrix[start^.num - 1, checkPoint^.num - 1].bus <> nil then
-    checkTime(start, checkPoint, timer, GetType(start^.bus^.data^.specif))
+  begin
+    if checkTime(start, checkPoint, timer, GetType(start^.bus^.data^.specif)) then
+      checkPoint^.prev := start;
+  end
   else if connectMatrix[start^.num - 1, checkPoint^.num - 1].TrolBus <> nil then
-    checkTime(start, checkPoint, timer, GetType(start^.trolBus^.data^.specif))
+  begin
+    if checkTime(start, checkPoint, timer, GetType(start^.trolBus^.data^.specif)) then
+      checkPoint^.prev := start;
+  end
   else if connectMatrix[start^.num - 1, checkPoint^.num - 1].tram <> nil then
-    checkTime(start, checkPoint, timer, GetType(start^.tram^.data^.specif))
+  begin
+    if checkTime(start, checkPoint, timer, GetType(start^.tram^.data^.specif)) then
+      checkPoint^.prev := start;
+  end
   else if connectMatrix[start^.num - 1, checkPoint^.num - 1].metro <> nil then
-    checkTime(start, checkPoint, timer, GetType(start^.metro^.data^.specif))
+  begin
+    if checkTime(start, checkPoint, timer, GetType(start^.metro^.data^.specif)) then
+      checkPoint^.prev := start;
+  end
+  else
+  begin
+    if checkTime(start, checkPoint, timer, 0) then
+      checkPoint^.prev := start;
+  end;
 end;
 
-procedure CheckTime(var start, checkPoint : PTStationList; var timer : double; specif : byte);
+function CheckTime(var start, checkPoint : PTStationList; var timer : double; specif : byte) : boolean;
 var
   time : double;
 begin
@@ -474,12 +514,13 @@ begin
     0 :
       time := GetDistance(start^.X, start^.Y, checkPoint^.X, checkPoint^.Y) / ON_FOOT_SPEED;
   end;
-  if connectMatrix[start^.num - 1, checkPoint^.num - 1].time > timer + time then
+  if connectMatrix[start^.num - 1, checkPoint^.num - 1].time >= timer + time then
   begin
     connectMatrix[start^.num - 1, checkPoint^.num - 1].time := timer + time;
     checkPoint^.prev := start;
     FindFuckingRoute(checkPoint, timer + time);
-  end;
+    Result := true;
+  end else Result := false;
 end;
 
 function StationsTired(i, j : integer) : boolean;
@@ -489,48 +530,82 @@ end;
 
 procedure SaveTrace(time : double);
 var
-  trace, stack : PTTrace;
+  trace, temp : PTTrace;
   pnt : PTStationList;
 begin
   if traceTable = nil then
   begin
     new(traceTable);
-    CopyStackToTraceTable(traceTable^.data, stack);
+    //traceTable^.data := nil;
+    while pnt <> nil do
+  begin
+    new(traceTable^.data);
+    temp^.data := pnt;
+    temp^.next := traceTable^.data;
+    traceTable^.data := temp;
+    pnt := pnt^.prev;
+  end;
     traceTable^.time := time;
   end else
   if traceTable^.next = nil then
   begin
     new(traceTable^.next);
-    CopyStackToTraceTable(traceTable^.next^.data, stack);
+    //traceTable^.next^.data := nil;
+    while pnt <> nil do
+  begin
+    new(temp);
+    temp^.data := pnt;
+    temp^.next := traceTable^.next^.data;
+    traceTable^.next^.data := temp;
+    pnt := pnt^.prev;
+  end;
     traceTable^.next^.time := time;
   end else
   if time < traceTable^.time then
   begin
-    TraceClear(traceTable^.data);
-    CopyStackToTraceTable(traceTable^.data, stack);
+    //TraceClear(traceTable^.data);
+    traceTable^.data := nil;
+    while pnt <> nil do
+  begin
+    new(temp);
+    temp^.data := pnt;
+    temp^.next := traceTable^.data;
+    traceTable^.data := temp;
+    pnt := pnt^.prev;
+  end;
     traceTable^.time := time;
   end else
   if time < traceTable^.next^.time then
   begin
-    TraceClear(traceTable^.next^.data);
-    CopyStackToTraceTable(traceTable^.next^.data, stack);
+    //TraceClear(traceTable^.next^.data);
+    traceTable^.next^.data := nil;
+    while pnt <> nil do
+  begin
+    new(temp);
+    temp^.data := pnt;
+    temp^.next := traceTable^.next^.data;
+    traceTable^.next^.data := temp;
+    pnt := pnt^.prev;
+  end;
     traceTable^.next^.time := time;
   end;
+  if time < maxTime then maxTime := time;
 end;
 
-procedure CopyStackToTraceTable(var head, stack : PTTrace);
+procedure CopyStackToTraceTable(var head : PTTrace);
 var
   pnt : PTStationList;
   temp : PTTrace;
 begin
-  head := nil;
   pnt := stop;
   while pnt <> nil do
   begin
     new(temp);
+    new(temp^.data);
     temp^.data := pnt;
     temp^.next := head;
     head := temp;
+    pnt := pnt^.prev;
   end;
 end;
 
