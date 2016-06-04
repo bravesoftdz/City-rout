@@ -346,7 +346,7 @@ end;
 function StationBetween(start, fin : PTTrace; stat : PTStationList) : boolean;
 begin
   Result := False;
-  while (start <> nil) and (start^.enable <> fin^.enable) and not Result do
+  while (start <> nil) and (start^.enable = fin^.enable) and not Result do
   begin
     Result := stat = start^.data;
     start := start^.next;
