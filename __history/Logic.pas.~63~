@@ -27,16 +27,16 @@ var
   connectMatrix : array of array of TLinks;
   start, stop : PTStationList;
   traceTable : PTTraceTable;
-  maxTime : double;
+   maxTime : double;
 
 procedure ConnectiveMatrixCreate;
 //procedure FindRoute;
 procedure FindFuckingRoute(var start : PTStationList; timer : double);
 procedure CheckTransport(var start, checkPoint : PTStationList; timer : double);
+procedure CheckTime(var start, checkPoint : PTStationList; var timer : double; specif : byte);
 procedure SaveTrace(time : double);
 procedure CopyStackToTraceTable(var head : PTTrace);
 procedure TraceClear(var stack : PTTrace);
-function CheckTime(var start, checkPoint : PTStationList; var timer : double; specif : byte) : boolean;
 function FinalPointInTrace(var start : PTStationList; var timer : double) : boolean;
 function GetAnswer(start : boolean) : PTStationList;
 function GetDistance(latitude1, longitude1, latitude2, longitude2 : double) : double;
@@ -51,7 +51,6 @@ const
   TRAM_SPEED = BUS_SPEED * 0.9;
   METRO_SPEED = 41 * 1000 / 60;
   ON_FOOT_SPEED = 5.288 * 1000 / 60;
-  MAX_TIME = $FFFF;
 
 
 function GetDistance(latitude1, longitude1, latitude2, longitude2 : double) : double;
@@ -155,10 +154,10 @@ begin
     begin
       if (pnt1 <> pnt2) and ConnectiveMatrixPointsTired(pnt1, pnt2) then
       begin
-        connectMatrix[pnt1^.num - 1, pnt2^.num - 1].distance :=
+        connectMatrix[pnt1^.num - 1, pnt2^.num - 1].time :=
         GetDistance(pnt1^.X, pnt1^.Y, pnt2^.X, pnt2^.Y);
-        connectMatrix[pnt2^.num - 1, pnt1^.num - 1].distance :=
-        connectMatrix[pnt1^.num - 1, pnt2^.num - 1].distance;
+        connectMatrix[pnt2^.num - 1, pnt1^.num - 1].time :=
+        connectMatrix[pnt1^.num - 1, pnt2^.num - 1].time;
       end;
       pnt2 := pnt2^.next;
     end;
@@ -181,8 +180,8 @@ begin
       connectMatrix[i,j].trolBus := nil;
       connectMatrix[i,j].tram := nil;
       connectMatrix[i,j].metro := nil;
-      connectMatrix[i,j].time := MAX_TIME;
-      connectMatrix[i,j].distance := 0;
+      connectMatrix[i,j].time := MIN_DISTANCE;
+      connectMatrix[i,j].distance := MAX_TIME;
     end;
   end;
 
@@ -290,7 +289,7 @@ var
   num, i : integer;
   pnt : PTStationList;
 begin
-  if (start <> stop) and (timer < maxTime * 1.5) then
+  if (start <> stop) and (timer < maxTime) then
   begin
     if FinalPointInTrace(start, timer) then exit;
     num := StationListGetSize - 1;
@@ -301,10 +300,8 @@ begin
         CheckTransport(start, pnt, timer);
     end;
   end else
-
   if (timer < maxTime * 1.5) then
   begin //SaveTrace(timer);
-    writeln;
     PrintList1;
     maxTime := timer;
   end;
@@ -322,7 +319,7 @@ begin
   if (trace <> nil) and (transportType <> 0) then
   begin
     distance := 0;
-    {repeat
+    repeat
       pnt := trace^.data;
       distance := GetDistance(trace^.data^.X, trace^.data^.Y, trace^.next^.data^.X, trace^.next^.data^.Y);
       case transportType of
@@ -335,21 +332,7 @@ begin
       end;
       trace := trace^.next;
       trace^.data^.prev := pnt;
-    until trace^.data = stop; }
-
-    while true do
-    begin
-      case transportType of
-        1, 2 :
-          connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time := distance / BUS_SPEED;
-        3 :
-          connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time := distance / TRAM_SPEED;
-        4 :
-          connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time := distance / METRO_SPEED;
-      end;
-      trace^.next^.data^.prev := trace^.data^.prev;
-      if trace^.next^.data <> stop then trace := trace^.next else break;
-    end;
+    until trace^.data = stop;
     FindFuckingRoute(stop, timer + connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time);
   end;
 end;
@@ -363,7 +346,7 @@ end;
 function StationBetween(start, fin : PTTrace; stat : PTStationList) : boolean;
 begin
   Result := False;
-  while (start <> nil) and (start^.enable = fin^.enable) and not Result do
+  while (start <> nil) and (start^.enable <> fin^.enable) and not Result do
   begin
     Result := stat = start^.data;
     start := start^.next;
@@ -474,32 +457,32 @@ procedure CheckTransport(var start, checkPoint : PTStationList; timer : double);
 begin
   if connectMatrix[start^.num - 1, checkPoint^.num - 1].bus <> nil then
   begin
-    if checkTime(start, checkPoint, timer, GetType(start^.bus^.data^.specif)) then
-      checkPoint^.prev := start;
+    checkTime(start, checkPoint, timer, GetType(start^.bus^.data^.specif));
+    checkPoint^.prev := start;
   end
   else if connectMatrix[start^.num - 1, checkPoint^.num - 1].TrolBus <> nil then
   begin
-    if checkTime(start, checkPoint, timer, GetType(start^.trolBus^.data^.specif)) then
-      checkPoint^.prev := start;
+    checkTime(start, checkPoint, timer, GetType(start^.trolBus^.data^.specif));
+    checkPoint^.prev := start;
   end
   else if connectMatrix[start^.num - 1, checkPoint^.num - 1].tram <> nil then
   begin
-    if checkTime(start, checkPoint, timer, GetType(start^.tram^.data^.specif)) then
-      checkPoint^.prev := start;
+    checkTime(start, checkPoint, timer, GetType(start^.tram^.data^.specif));
+    checkPoint^.prev := start;
   end
   else if connectMatrix[start^.num - 1, checkPoint^.num - 1].metro <> nil then
   begin
-    if checkTime(start, checkPoint, timer, GetType(start^.metro^.data^.specif)) then
-      checkPoint^.prev := start;
+    checkTime(start, checkPoint, timer, GetType(start^.metro^.data^.specif));
+    checkPoint^.prev := start;
   end
   else
   begin
-    if checkTime(start, checkPoint, timer, 0) then
-      checkPoint^.prev := start;
+    checkTime(start, checkPoint, timer, 0);
+    checkPoint^.prev := start;
   end;
 end;
 
-function CheckTime(var start, checkPoint : PTStationList; var timer : double; specif : byte) : boolean;
+procedure CheckTime(var start, checkPoint : PTStationList; var timer : double; specif : byte);
 var
   time : double;
 begin
@@ -518,8 +501,7 @@ begin
     connectMatrix[start^.num - 1, checkPoint^.num - 1].time := timer + time;
     checkPoint^.prev := start;
     FindFuckingRoute(checkPoint, timer + time);
-    Result := true;
-  end else Result := false;
+  end;
 end;
 
 function StationsTired(i, j : integer) : boolean;
