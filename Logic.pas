@@ -270,13 +270,9 @@ begin
   if (trace <> nil) and (transportType <> 0) then
   begin
     Result := true;
-    while true do
-    begin
-      connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time := GetOverallTime(trace^.data, trace^.next^.data, transportType);
-      trace^.next^.data^.prev := trace^.data;
-      if trace^.next^.data <> stop then trace := trace^.next else break;
-    end;
-    FindFuckingRoute(stop, timer + connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time);
+    connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time := GetOverallTime(trace^.data, trace^.next^.data, transportType);
+    trace^.next^.data^.prev := trace^.data;
+    FindFuckingRoute(trace^.next^.data, timer + connectMatrix[trace^.data^.num - 1, trace^.next^.data^.num - 1].time);
   end;
 end;
 
