@@ -58,9 +58,9 @@ function GetDistance(latitude1, longitude1, latitude2, longitude2 : double) : do
 const diameter = 12756200 ;
 var   dx, dy, dz:double;
 begin
-  longitude1 := degtorad(longitude1 - longitude2);
-  latitude1 := degtorad(latitude1);
-  latitude2 := degtorad(latitude2);
+  longitude1 := degToRad(longitude1 - longitude2);
+  latitude1 := degToRad(latitude1);
+  latitude2 := degToRad(latitude2);
 
   dz := sin(latitude1) - sin(latitude2);
   dx := cos(longitude1) * cos(latitude1) - cos(latitude2);
@@ -307,7 +307,7 @@ begin
   end;
 end;
 
-function GetFinStation(station : PTTrace) : PTTrace;
+function GetFinStationForOneWayLinkedTrace(station : PTTrace) : PTTrace;
 var
   pnt : PTTrace;
 begin
@@ -315,6 +315,13 @@ begin
   pnt := station;
   while (pnt^.next <> nil) and (station^.enable = pnt^.next^.enable) do pnt := pnt^.next;
   Result := pnt;
+end;
+
+function GetFinStationForTwoWayLinkedTrace(start: PTTrace; stat, stop : PTStationList) : PTTrace;
+var
+  pnt : PTTrace;
+begin
+  while (start^.data <> station) and (start
 end;
 
 function StationEnableOnBus(stat1, stat2 : PTStationList) : PTTrace;
@@ -329,7 +336,7 @@ begin
     while head <> nil do
     begin
       startStation := GetStartStation(head^.data^.trace, stat1);
-      finStation := GetFinStation(startStation);
+      finStation := GetFinStationForOneWayLinkedTrace(startStation);
       if StationBetween(startStation, finStation, stat2) then Result := startStation;
       if Result <> nil then exit;
       head := head^.next;
@@ -341,7 +348,7 @@ begin
     while head <> nil do
     begin
       startStation := GetStartStation(head^.data^.trace, stat1);
-      finStation := GetFinStation(startStation);
+      finStation := GetFinStationForOneWayLinkedTrace(startStation);
       if StationBetween(startStation, finStation, stat2) then Result := startStation;
       if Result <> nil then exit;
       head := head^.next;
@@ -361,7 +368,7 @@ begin
     while head <> nil do
     begin
       startStation := GetStartStation(head^.data^.trace, stat1);
-      finStation := GetFinStation(startStation);
+      finStation := GetFinStationForTwoWayLinkedTrace(head^.data^.trace, startStation, stat2);
       if StationBetween(startStation, finStation, stat2) then Result := startStation;
       if Result <> nil then exit;
       head := head^.next;
@@ -380,8 +387,8 @@ begin
     head := stat1^.metro;
     while head <> nil do
     begin
-      startStation := GetStartStation(head^.data^.trace, stat1);
-      finStation := GetFinStation(startStation);
+      //startStation := GetStartStation(head^.data^.trace, stat1);
+      finStation := GetFinStationForTwoWayLinkedTrace(head^.data^.trace, stat1, stat2);
       if StationBetween(startStation, finStation, stat2) then Result := startStation;
       if Result <> nil then exit;
       head := head^.next;

@@ -98,7 +98,7 @@ procedure FillTraffic(elem : PTTransportList);
 //проходящего через станцию
 procedure AddTransport(var head : PTTraffic; elem : PTTransportList);
 //процедура, заносящая ссылки на станции, через которые проходит единица транспорта
-procedure FillTrace (var head : PTTrace; var mas : TMas);
+procedure FillTrace (var head : PTTrace; specif : byte; var mas : TMas);
 //функция возвращает однобайтовое число исходя из того, какой вид транспорта
 //поступил на вход: 1 - автобус, 2 - троллейбус, 3 - трамвай,  - ошибка
 function GetType(specif : TType) : byte;
@@ -168,14 +168,14 @@ begin
       head^.num := temp.num;
       head^.next := nil;
       head^.trace := nil;
-      FillTrace(head^.trace, temp.trace);
+      FillTrace(head^.trace, GetType(head^.specif), temp.trace);
       FillTraffic(head);
     end;
     CloseFile(transpFile);
   end;
 end;
 
-procedure FillTrace (var head : PTTrace; var mas : TMas);
+procedure FillTrace (var head : PTTrace; specif : byte; var mas : TMas);
 var
   elem, board : PTTrace;
   pnt : PTStationList;

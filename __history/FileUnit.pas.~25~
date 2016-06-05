@@ -5,7 +5,7 @@ interface
 uses System.SysUtils;
 
 const
-  MAX_DISTANCE = $FFFF;
+  MAX_TIME = $FFFF;
   MIN_DISTANCE = 0;
 
 type
@@ -48,6 +48,7 @@ type
   end;
   TTrace = record                    //список станций, через которые проходит транспорт
     data : PTStationList;
+    enable : boolean;
     next : PTTrace;
   end;
   TStationList = record              //общая информация о каждой станции
@@ -59,6 +60,7 @@ type
     trolBus : PTTraffic;
     tram : PTTraffic;
     metro : PTTraffic;
+    prev : PTStationList;
     next : PTStationList;
   end;
   TTransporList = record             //общая информация о каждой единице транспорта
@@ -96,7 +98,7 @@ procedure FillTraffic(elem : PTTransportList);
 //проходящего через станцию
 procedure AddTransport(var head : PTTraffic; elem : PTTransportList);
 //процедура, заносящая ссылки на станции, через которые проходит единица транспорта
-procedure FillTrace (var head : PTTrace; var mas : TMas);
+procedure FillTrace (var head : PTTrace; specif : byte; var mas : TMas);
 //функция возвращает однобайтовое число исходя из того, какой вид транспорта
 //поступил на вход: 1 - автобус, 2 - троллейбус, 3 - трамвай,  - ошибка
 function GetType(specif : TType) : byte;
@@ -137,6 +139,7 @@ begin
       head^.trolBus := nil;
       head^.tram := nil;
       head^.metro := nil;
+      head^.prev := nil;
       head^.next := nil;
     end;
     closeFile(StatNameFile);
@@ -165,45 +168,51 @@ begin
       head^.num := temp.num;
       head^.next := nil;
       head^.trace := nil;
-      FillTrace(head^.trace, temp.trace);
+      FillTrace(head^.trace, GetType(head^.specif), temp.trace);
       FillTraffic(head);
     end;
     CloseFile(transpFile);
   end;
 end;
 
-procedure FillTrace (var head : PTTrace; var mas : TMas);
+procedure FillTrace (var head : PTTrace; specif : byte; var mas : TMas);
 var
-  elem : PTTrace;
+  elem, board : PTTrace;
   pnt : PTStationList;
   i, j : integer;
   flag, direct : boolean;
 begin
   i := 1;
   elem := nil;
-  flag := true;
-  repeat
-    while mas[i] <> 0 do
+  flag := false;
+  while mas[i] <> 0 do
+  begin
+    if head <> nil then
     begin
-      if head <> nil then
-      begin
-        new (elem^.next);
-        elem := elem^.next;
-      end else
-      begin
-        New (head);
-        elem := head;
-      end;
-
-      pnt := stationList;
-      for j := 1 to mas[i] do pnt := pnt^.next;
-      elem^.data := pnt;
-      elem^.next := nil;
-      inc(i);
+      new (elem^.next);
+      elem := elem^.next;
+    end else
+    begin
+      New (head);
+      elem := head;
     end;
+
+    pnt := stationList;
+    for j := 1 to mas[i] do pnt := pnt^.next;
+    elem^.data := pnt;
+    elem^.enable := flag;
+    elem^.next := nil;
     inc(i);
-    flag := not flag;
-  until flag;
+  end;
+  i := i + 2;
+
+  elem := head;
+  while (specif <> 4) and (elem.data.num <> mas[i]) do
+  begin
+    elem^.enable := true;
+    elem := elem^.next;
+  end;
+  elem^.enable := true;
 end;
 
 function GetType(specif : TType) : byte;
