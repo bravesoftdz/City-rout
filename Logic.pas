@@ -352,18 +352,21 @@ end;
 function StationEnableOnTram(stat1, stat2 : PTStationList) : PTTrace;
 var
   head : PTTraffic;
-  startStation, finStation : PTTrace;
+  startStation, finStation, pnt : PTTrace;
 begin
   Result := nil;
   if stat1^.tram <> nil then
   begin
     head := stat1^.tram;
+    pnt := stat1^.tram^.data^.trace;
     while head <> nil do
     begin
-      startStation := GetStartStation(head^.data^.trace, stat1);
+      startStation := GetStartStation(pnt, stat1);
       finStation := GetFinStation(startStation);
       if StationBetween(startStation, finStation, stat2) then Result := startStation;
       if Result <> nil then exit;
+      pnt := head^.data^.trace;
+      while pnt^.enable do pnt := pnt^.next;
       head := head^.next;
     end;
   end;
