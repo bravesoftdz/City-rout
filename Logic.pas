@@ -307,7 +307,7 @@ begin
   end;
 end;
 
-function GetFinStationForOneWayLinkedTrace(station : PTTrace) : PTTrace;
+function GetFinStation(station : PTTrace) : PTTrace;
 var
   pnt : PTTrace;
 begin
@@ -315,13 +315,6 @@ begin
   pnt := station;
   while (pnt^.next <> nil) and (station^.enable = pnt^.next^.enable) do pnt := pnt^.next;
   Result := pnt;
-end;
-
-function GetFinStationForTwoWayLinkedTrace(start: PTTrace; stat, stop : PTStationList) : PTTrace;
-var
-  pnt : PTTrace;
-begin
-  while (start^.data <> station) and (start
 end;
 
 function StationEnableOnBus(stat1, stat2 : PTStationList) : PTTrace;
@@ -336,7 +329,7 @@ begin
     while head <> nil do
     begin
       startStation := GetStartStation(head^.data^.trace, stat1);
-      finStation := GetFinStationForOneWayLinkedTrace(startStation);
+      finStation := GetFinStation(startStation);
       if StationBetween(startStation, finStation, stat2) then Result := startStation;
       if Result <> nil then exit;
       head := head^.next;
@@ -348,7 +341,7 @@ begin
     while head <> nil do
     begin
       startStation := GetStartStation(head^.data^.trace, stat1);
-      finStation := GetFinStationForOneWayLinkedTrace(startStation);
+      finStation := GetFinStation(startStation);
       if StationBetween(startStation, finStation, stat2) then Result := startStation;
       if Result <> nil then exit;
       head := head^.next;
@@ -368,7 +361,7 @@ begin
     while head <> nil do
     begin
       startStation := GetStartStation(head^.data^.trace, stat1);
-      finStation := GetFinStationForTwoWayLinkedTrace(head^.data^.trace, startStation, stat2);
+      finStation := GetFinStation(startStation);
       if StationBetween(startStation, finStation, stat2) then Result := startStation;
       if Result <> nil then exit;
       head := head^.next;
@@ -379,18 +372,21 @@ end;
 function StationEnableOnMetro(stat1, stat2 : PTStationList) : PTTrace;
 var
   head : PTTraffic;
-  startStation, finStation : PTTrace;
+  startStation, finStation, pnt : PTTrace;
 begin
   Result := nil;
   if stat1^.metro <> nil then
   begin
     head := stat1^.metro;
+    pnt := stat1^.metro^.data^.trace;
     while head <> nil do
     begin
-      //startStation := GetStartStation(head^.data^.trace, stat1);
-      finStation := GetFinStationForTwoWayLinkedTrace(head^.data^.trace, stat1, stat2);
+      startStation := GetStartStation(pnt, stat1);
+      finStation := GetFinStation(startStation);
       if StationBetween(startStation, finStation, stat2) then Result := startStation;
       if Result <> nil then exit;
+      pnt := head^.data^.trace;
+      while pnt^.enable do pnt := pnt^.next;
       head := head^.next;
     end;
   end;
