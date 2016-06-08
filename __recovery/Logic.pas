@@ -211,8 +211,8 @@ function GetAnswer(start : boolean) : PTStationList;
 var
   num : integer;
 begin
-  if start then write (#13, #10'Введите номер исходной точки: ')
-  else write (#13, #10'Введите номер пункта назначения: ');
+  if start then write (#13, #10'Р’РІРµРґРёС‚Рµ РЅРѕРјРµСЂ РёСЃС…РѕРґРЅРѕР№ С‚РѕС‡РєРё: ')
+  else write (#13, #10'Р’РІРµРґРёС‚Рµ РЅРѕРјРµСЂ РїСѓРЅРєС‚Р° РЅР°Р·РЅР°С‡РµРЅРёСЏ: ');
 
   Readln(num);
   Result := GetStationPnt(num);
@@ -472,8 +472,8 @@ procedure PrintTable;
 begin
   while resultTable <> nil do
   begin
-    write (#13,#10,resultTable^.station^.name,' ');
-    if resultTable^.transport = nil then write(' пешком') else
+    write (#13,#10,'Р”Рѕ ',resultTable^.station^.name,' ');
+    if resultTable^.transport = nil then write(' РїРµС€РєРѕРј') else
     while resultTable^.transport <> nil do
     begin
       write (' ',resultTable^.transport^.data^.specif,resultTable^.transport^.data^.num);

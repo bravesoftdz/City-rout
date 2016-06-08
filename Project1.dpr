@@ -8,6 +8,7 @@ uses
   System.SysUtils, Logic, FileUnit;
   var
     i :  integer;
+    start, stop : PTStationList;
 
 procedure PrintStations;
 var
@@ -28,7 +29,7 @@ begin
   useMetro := true;
   CreateStationList;
   CreateTransportList;
-  ConnectiveMatrixCreate;
+
 
 
 
@@ -36,8 +37,7 @@ begin
   //FindRoute;
   start := GetAnswer(true);
   stop := GetAnswer(false);
-  maxTime := MAX_TIME;
-  FindFuckingRoute(start, 0);
+  MainLogicProc(start, stop);
 
 
   {for i := 1 to 113 do stationList := stationList^.next;

@@ -6,10 +6,8 @@ program Project1;
 
 uses
   System.SysUtils, Logic, FileUnit;
-
-var
-  i, j, num : integer;
-  pnt : PTTransportList;
+  var
+    i :  integer;
 
 procedure PrintStations;
 var
@@ -31,9 +29,28 @@ begin
   CreateStationList;
   CreateTransportList;
   ConnectiveMatrixCreate;
+
+
+
   PrintStations;
-  FindRoute;
-  writeln ('Завершено!');
+  //FindRoute;
+  start := GetAnswer(true);
+  stop := GetAnswer(false);
+  maxTime := MAX_TIME;
+  FindFuckingRoute(start, 0);
+
+
+  {for i := 1 to 113 do stationList := stationList^.next;
+    if stationList^.metro <> nil then writeln ('есть') else writeln ('пусто');
+  writeln ('Завершено!'); }
+
+ { while traceTable^.data <> nil do
+  begin
+    Writeln(traceTable^.data^.data^.name);
+    traceTable^.data := traceTable^.data^.next;
+  end;       }
+
+
  { num := StationListGetSize - 1;
   for i := 0 to num do
     for j := 0 to num do
